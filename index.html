@@ -1458,6 +1458,7 @@
 
     // Check scroll cue after screen renders
     setTimeout(checkScrollCue, 100);
+    setTimeout(reportHeightToParent, 120);
   }
 
   function updateUIForScreen(screen) {
@@ -1534,6 +1535,25 @@
     } else {
       scrollCue.classList.remove('visible');
     }
+  }
+
+  // ============================================================
+  // IFRAME AUTO-RESIZE
+  // When this quiz is embedded via <iframe> (e.g. on Systeme.io),
+  // tell the parent page exactly how tall the current screen is so
+  // the iframe can resize to fit — no fixed iframe height, no
+  // giant gap before the Continue button, no double scrollbars.
+  // ============================================================
+  function reportHeightToParent() {
+    if (window.parent === window) return; // not embedded, nothing to do
+    const app = document.getElementById('app');
+    if (!app) return;
+    const prevMinHeight = app.style.minHeight;
+    app.style.minHeight = '0px';
+    void app.offsetHeight; // force reflow so the override above takes effect
+    const height = Math.ceil(app.scrollHeight);
+    app.style.minHeight = prevMinHeight;
+    window.parent.postMessage({ type: 'midlifeResetQuizHeight', height: height }, '*');
   }
 
   function updateProgress() {
@@ -1665,7 +1685,7 @@
         <p>
           A short note built specifically for what you just read is on its way, with one quiet first step forward.
         </p>
-        <a href="https://www.midliferesetstudio.com/quiz-tag/${primary.tag}?archetype=${primary.tag}" class="result-cta" id="archetypeTagLink" target="_blank" rel="noopener">Send me tips for this archetype</a>
+        <a href="https://www.midliferesetstudio.com/${primary.tag}" class="result-cta" id="archetypeTagLink" target="_blank" rel="noopener">Send me tips for this archetype</a>
       </div>
 
       <div class="result-signoff">
@@ -1700,7 +1720,10 @@
 
   // Scroll cue listeners
   window.addEventListener('scroll', checkScrollCue, { passive: true });
-  window.addEventListener('resize', checkScrollCue);
+  window.addEventListener('resize', () => {
+    checkScrollCue();
+    reportHeightToParent();
+  });
 
   // ============================================================
   // INITIALIZE
@@ -1708,6 +1731,8 @@
 
   buildQuestionScreens();
   updateUIForScreen(document.getElementById('screen-welcome'));
+  setTimeout(reportHeightToParent, 150);
+  window.addEventListener('load', () => setTimeout(reportHeightToParent, 200));
 
 </script>
 
